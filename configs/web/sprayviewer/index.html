@@ -1,162 +1,175 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>Spray Viewer</title>
-	<link href="style.css" rel="stylesheet" type="text/css" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Spray Viewer</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
-	<div id="container">
-		<div class="title">Spray Viewer</div>
-		<div class="subtitle" id="playercount">Players online with sprays: 0</div>
-	</div>
-	
-	<script src="vtflib.js"></script>
-	<script type="text/javascript">
-		VTFLib();
-		
-		var container = document.getElementById("container");
-		var playercount = document.getElementById("playercount");
-		
-		function getSprays()
-		{
-			var request = new XMLHttpRequest();
-			request.open("GET", "players", true);
-			request.responseType = "arraybuffer";
-			
-			request.onload = function()
-			{
-				if (this.status != 200)
-					return;
-				
-				var buffer = new DataView(this.response);
-				var cursor = 0;
+    <div id="container">
+        <div class="title">Spray Viewer</div>
+        <div class="subtitle" id="playercount">Players online with sprays: ?</div>
+    </div>
 
-				var numPlayers = buffer.getInt8(cursor, true); cursor += 1;
-				var players = [];
-				
-				for (var i = 0; i < numPlayers; ++i)
-				{
-					var player = {
-						serial: 0,
-						accountid: 0,
-						name: ''
-					};
+    <script src="vtflib.js"></script>
+    <script type="text/javascript">
 
-					players.push(player);
+        VTFLib();
 
-					player.serial = buffer.getInt32(cursor, true); cursor += 4;
-					player.accountid = buffer.getInt32(cursor, true); cursor += 4;
+        var container   = document.getElementById("container");
+        var playercount = document.getElementById("playercount");
 
-					while (true) {
-						var character = buffer.getInt8(cursor, true); cursor += 1;
-						
-						if (character == 0)
-							break;
+        function getSprays()
+        {
+            var request = new XMLHttpRequest();
+            request.open("GET", "players", true);
+            request.responseType = "arraybuffer";
 
-						player.name += String.fromCharCode(character);
-					}
+            request.onload = function()
+            {
+                if (this.status != 200)
+                    return;
 
-					// Decode player name
-					try {
-						player.name = decodeURIComponent(escape(player.name));
-					} catch(e) {
-						player.name = 'SprayViewerERROR!';
-						console.log('Failed to decode name: ' + player.name);
-					}
-				}
+                var buffer = new DataView(this.response);
+                var cursor = 0;
 
-				if (cursor != buffer.byteLength)
-				{
-					console.log('Failed to parse payload: ' + cursor + ' != ' + buffer.byteLength);
-					return;
-				}
+                var numPlayers = buffer.getInt8(cursor, true); cursor += 1;
+                var players = [];
 
-				for (var i = 0; i < players.length; ++i)
-				{
-					var player = players[i];
-					
-					addSpray(player.name, player.accountid, "spray/" + player.serial.toString(16));
-				}
-				
-				playercount.innerHTML = "Players online with sprays: " + players.length;
-			};
-			
-			request.send(null);
-		}
-		
-		function addSpray(player, accountid, url)
-		{
-			var request = new XMLHttpRequest();
-			request.open("GET", url, true);
-			request.responseType = "arraybuffer";
-			
-			request.onload = function()
-			{
-				if (this.status != 200)
-					return;
-				
-				var box = document.createElement("div");
-				box.className = "box";
-				container.appendChild(box);
-				
-				var canvas = document.createElement("canvas");
-				box.appendChild(canvas);
-				
-				var p = document.createElement("p");
-				p.innerHTML = '<p><img class="avatar" src="https://www.traderep.org/avatar/' + accountid + '"> ' + player + '</p>';
-				box.appendChild(p);
-				
-				// VTFLib - START
-				var bytes = new Uint8Array(this.response);
-				var spray = VTFtoRGBA(bytes);
-				
-				var ctx = canvas.getContext("2d");
-				var imageData = ctx.getImageData(0, 0, spray.width, spray.height);
-				
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-				canvas.width = spray.width;
-				canvas.height = spray.height;
-				
-				var frame = 0;
-			
-				setImageData(imageData, spray.rgba[frame]);
-				ctx.putImageData(imageData, 0, 0);
-				
-				if (spray.framecount > 1)
-				{
-					// loop through the rest of the frames
-					setInterval( function ()
-					{
-						if (++frame >= spray.framecount)
-							frame = 0;
-						
-						setImageData(imageData, spray.rgba[frame]);
-						ctx.putImageData(imageData, 0, 0);
-					}, 200);
-				}
-				// VTFLib - END
-			};
-			
-			request.send(null);
-		}
-		
-		function setImageData(imageData, rawData)
-		{
-			if (typeof imageData.data.set === "function")
-			{
-				imageData.data.set(rawData);
-			}
-			else
-			{
-				// older browser support
-				for (var i = 0; i < imageData.data.length; i++)
-					imageData.data[i] = rawData[i] & 0xFF;
-			}
-		}
-		
-		getSprays();
-	</script>
+                for (var i = 0; i < numPlayers; ++i)
+                {
+                    var player = {
+                        serial: 0,
+                        accountid: 0,
+                        name: ''
+                    };
+
+                    players.push(player);
+
+                    player.serial = buffer.getInt32(cursor, true); cursor += 4;
+                    player.accountid = buffer.getInt32(cursor, true); cursor += 4;
+
+                    while (true) {
+                        var character = buffer.getInt8(cursor, true); cursor += 1;
+
+                        if (character == 0)
+                            break;
+
+                        player.name += String.fromCharCode(character);
+                    }
+
+                    // Decode player name
+                    try
+                    {
+                        player.name = decodeURIComponent(escape(player.name));
+                    }
+                    catch(e)
+                    {
+                        player.name = 'SprayViewerERROR!';
+                        console.log('Failed to decode name: ' + player.name);
+                    }
+                }
+
+                if (cursor != buffer.byteLength)
+                {
+                    console.log('Failed to parse payload: ' + cursor + ' != ' + buffer.byteLength);
+                    return;
+                }
+
+                for (var i = 0; i < players.length; ++i)
+                {
+                    var player = players[i];
+
+                    addSpray(player.name, player.accountid, "spray/" + player.serial.toString(16));
+                }
+
+                playercount.innerHTML = "Players online with sprays: " + players.length;
+            };
+
+            request.send(null);
+        }
+
+        function addSpray(player, accountid, url)
+        {
+            var request = new XMLHttpRequest();
+            request.open("GET", url, true);
+            request.responseType = "arraybuffer";
+
+            request.onload = function()
+            {
+                if (this.status != 200)
+                {
+                    return;
+                }
+
+                var box = document.createElement("div");
+                box.className = "box";
+                container.appendChild(box);
+
+                var canvas = document.createElement("canvas");
+                box.appendChild(canvas);
+
+                var p = document.createElement("p");
+
+                // boy i hope this works - steph
+                var steamid = '[U:1:' + accountid + ']';
+                var reptfurl = 'https://rep.tf/' + steamid;
+                p.innerHTML = '<p><a href="' + reptfurl + '"> ' + player + '</a></p>';
+
+                box.appendChild(p);
+
+                // VTFLib - START
+                var bytes = new Uint8Array(this.response);
+                var spray = VTFtoRGBA(bytes);
+
+                var ctx = canvas.getContext("2d");
+                var imageData = ctx.getImageData(0, 0, spray.width, spray.height);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.width = spray.width;
+                canvas.height = spray.height;
+
+                var frame = 0;
+
+                setImageData(imageData, spray.rgba[frame]);
+                ctx.putImageData(imageData, 0, 0);
+
+                if (spray.framecount > 1)
+                {
+                    // loop through the rest of the frames
+                    setInterval( function ()
+                    {
+                        if (++frame >= spray.framecount)
+                            frame = 0;
+
+                        setImageData(imageData, spray.rgba[frame]);
+                        ctx.putImageData(imageData, 0, 0);
+                    }, 200);
+                }
+                // VTFLib - END
+            };
+
+            request.send(null);
+        }
+
+        function setImageData(imageData, rawData)
+        {
+            if (typeof imageData.data.set === "function")
+            {
+                imageData.data.set(rawData);
+            }
+            else
+            {
+                // older browser support
+                for (var i = 0; i < imageData.data.length; i++)
+                {
+                    imageData.data[i] = rawData[i] & 0xFF;
+                }
+            }
+        }
+
+        getSprays();
+    </script>
 </body>
 </html>
